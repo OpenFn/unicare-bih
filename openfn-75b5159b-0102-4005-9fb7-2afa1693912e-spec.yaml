@@ -3,6 +3,7 @@ description: |
   UNICARE workflows for InForm-Primero data sync for Turkey and Bosnia country offices
 
 collections: null
+channels: null
 credentials:
   aleksa@openfn.org-PROD-Unicare-BiH-Primero:
     name: PROD Unicare BiH Primero
@@ -469,7 +470,7 @@ workflows:
 
       Get-attachment-From-Inform:
         name: Get attachment From Inform
-        adaptor: '@openfn/language-inform@1.0.1'
+        adaptor: '@openfn/language-inform@1.3.2'
         credential: aleksa@openfn.org-Unicef-Inform
         body: |
           // Check out the Job Writing Guide for help getting started:
@@ -518,6 +519,7 @@ workflows:
     triggers:
       webhook:
         type: webhook
+        webhook_reply: before_start
         enabled: true
     edges:
       webhook->Transform-and-Map-data:
@@ -993,7 +995,7 @@ workflows:
 
       Get-attachment-From-Inform:
         name: Get attachment From Inform
-        adaptor: '@openfn/language-inform@1.0.1'
+        adaptor: '@openfn/language-inform@1.3.2'
         credential: aleksa@openfn.org-Unicef-Inform
         body: |
           // Check out the Job Writing Guide for help getting started:
@@ -1042,6 +1044,7 @@ workflows:
     triggers:
       webhook:
         type: webhook
+        webhook_reply: before_start
         enabled: true
     edges:
       webhook->Transform-and-Map-data:
@@ -1624,7 +1627,7 @@ workflows:
 
       Get-attachment-From-Inform:
         name: Get attachment From Inform
-        adaptor: '@openfn/language-inform@1.0.1'
+        adaptor: '@openfn/language-inform@1.3.2'
         credential: aleksa@openfn.org-Unicef-Inform
         body: |
           // Check out the Job Writing Guide for help getting started:
@@ -1684,6 +1687,7 @@ workflows:
     triggers:
       webhook:
         type: webhook
+        webhook_reply: before_start
         enabled: true
     edges:
       webhook->Transform-and-Map-data:
@@ -2102,7 +2106,7 @@ workflows:
               "77": "TUR077",
               "66": "TUR066",
               "67": "TUR067"
-          };
+            };
 
             const vulnerabilityMapping = {
               "None": "none_9052aa8",
@@ -2150,10 +2154,16 @@ workflows:
             };
 
             const formatRegistrationDate = (date) => {
-              const parsedDate = dateFns.parse(date, "dd-MMM-yyyy", new Date());
+              if (!date) return null;
 
-              return dateFns.format(parsedDate, "yyyy-MM-dd");
-            }
+              const parsed = dateFns.parse(date, "dd-MMM-yyyy", new Date());
+              if (!isNaN(parsed.getTime())) return dateFns.format(parsed, "yyyy-MM-dd");
+
+              const fallback = new Date(date);
+              if (!isNaN(fallback.getTime())) return dateFns.format(fallback, "yyyy-MM-dd");
+
+              throw new Error(`Unrecognised registration_date format: "${date}"`);
+            };
 
             //Perform input data mapping
             state.mappedData = {
@@ -2161,7 +2171,7 @@ workflows:
               sex: genderMapping[state.data.sex],
               age_range_3df3bdb: ageRangeMapping[state.data.age_range],
               protection_status: caseCategoryMapping[state.data.case_category_80a3d81],
-              protection_concerns:  (state.data.programmatic_area || "")
+              protection_concerns: (state.data.programmatic_area || "")
                 .split(" ")
                 .map(factor => programmaticAreaMapping[factor])
                 .filter(Boolean),
@@ -2228,7 +2238,7 @@ workflows:
 
       Get-attachment-From-Inform:
         name: Get attachment From Inform
-        adaptor: '@openfn/language-inform@1.0.1'
+        adaptor: '@openfn/language-inform@1.3.2'
         credential: aleksa@openfn.org-Unicef-Inform
         body: |
           // Check out the Job Writing Guide for help getting started:
@@ -2288,8 +2298,19 @@ workflows:
     triggers:
       webhook:
         type: webhook
+        webhook_reply: before_start
         enabled: true
     edges:
+      webhook->Transform-and-Map-data:
+        source_trigger: webhook
+        target_job: Transform-and-Map-data
+        condition_type: always
+        enabled: true
+      Transform-and-Map-data->Register-feedback-in-Primero:
+        source_job: Transform-and-Map-data
+        target_job: Register-feedback-in-Primero
+        condition_type: on_job_success
+        enabled: true
       Register-feedback-in-Primero->Get-attachment-From-Inform:
         source_job: Register-feedback-in-Primero
         target_job: Get-attachment-From-Inform
@@ -2302,16 +2323,6 @@ workflows:
       Get-attachment-From-Inform->Upload-attachment-to-Primero:
         source_job: Get-attachment-From-Inform
         target_job: Upload-attachment-to-Primero
-        condition_type: on_job_success
-        enabled: true
-      webhook->Transform-and-Map-data:
-        source_trigger: webhook
-        target_job: Transform-and-Map-data
-        condition_type: always
-        enabled: true
-      Transform-and-Map-data->Register-feedback-in-Primero:
-        source_job: Transform-and-Map-data
-        target_job: Register-feedback-in-Primero
         condition_type: on_job_success
         enabled: true
   x-auth-testing:
@@ -2333,6 +2344,7 @@ workflows:
     triggers:
       webhook:
         type: webhook
+        webhook_reply: before_start
         enabled: false
     edges:
       webhook->primero-auth-test:
